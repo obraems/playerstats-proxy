@@ -1,0 +1,24 @@
+# IDE
+.idea/
+
+# Environnements virtuels
+.venv/
+
+# Variables d'environnement
+.env
+
+# Build / packaging
+*.egg-info/
+dist/
+build/
+
+# Python cache
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+
+# Tests / coverage (au cas où)
+.coverage
+htmlcov/
+.pytest_cache/
