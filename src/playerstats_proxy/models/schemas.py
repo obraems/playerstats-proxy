@@ -59,3 +59,21 @@ class AggregateStatsResponse(BaseModel):
     limit_per_section: int = Field(ge=0)
     updated_at: datetime
     stats: Dict[str, Dict[str, int]]
+
+
+class SectionTopEntry(BaseModel):
+    uuid: str
+    name: str
+    value: int = Field(ge=0)
+    section: str
+    total_value: int = Field(ge=0)
+    percent_of_total: float = Field(ge=0, le=100)
+
+
+class SectionTopResponse(BaseModel):
+    section: str
+    limit: int = Field(ge=1)
+    include_zeros: bool
+    updated_at: datetime
+    total_value: int = Field(ge=0)
+    results: list[SectionTopEntry]
