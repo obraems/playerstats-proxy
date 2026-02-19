@@ -8,6 +8,7 @@ from fastapi import FastAPI
 from playerstats_proxy.api.routes.health import router as health_router
 from playerstats_proxy.api.routes.top import router as top_router
 from playerstats_proxy.api.routes.best import router as best_router
+from playerstats_proxy.api.routes.stats import router as stats_router
 from playerstats_proxy.api.routes.upstream_proxy import router as upstream_proxy_router
 from playerstats_proxy.core.config import Settings
 from playerstats_proxy.core.logging import setup_logging
@@ -27,6 +28,7 @@ async def lifespan(app: FastAPI):
         app.state.settings = settings
         app.state.players_cache = TTLCache(ttl_seconds=settings.cache_ttl_seconds)
         app.state.maxima_cache = TTLCache(ttl_seconds=settings.cache_ttl_seconds)
+        app.state.aggregate_cache = TTLCache(ttl_seconds=settings.cache_ttl_seconds)
 
         app.state.playerstats_client = PlayerStatsClient(
             http_client=http_client,
@@ -52,6 +54,7 @@ app = FastAPI(
 app.include_router(health_router)
 app.include_router(top_router)
 app.include_router(best_router)
+app.include_router(stats_router)
 
 # IMPORTANT : à la fin, pour que tes routes custom aient priorité
 app.include_router(upstream_proxy_router)

@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from datetime import datetime
 from pydantic import BaseModel, Field
+from typing import Dict
 
 
 class HealthResponse(BaseModel):
@@ -42,3 +43,11 @@ class BestStatsResponse(BaseModel):
     max_results: int = Field(ge=1)
     updated_at: datetime
     results: list[BestStatEntry]
+
+
+class AggregateStatsResponse(BaseModel):
+    players: int = Field(ge=0)
+    min_value: int = Field(ge=0)
+    limit_per_section: int = Field(ge=0)
+    updated_at: datetime
+    stats: Dict[str, Dict[str, int]]
