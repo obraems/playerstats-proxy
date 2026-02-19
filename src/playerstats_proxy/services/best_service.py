@@ -8,6 +8,7 @@ from playerstats_proxy.models.schemas import BestStatEntry, BestStatsResponse
 
 MaxInfo = Tuple[int, int]  # (max_value, winners_count)
 MaxMap = Dict[Tuple[str, str], MaxInfo]  # (section, stat_key) -> MaxInfo
+AggMap = Dict[str, Dict[str, int]]  # section -> stat_key -> total
 
 
 def _coerce_non_negative_int(value: object) -> int:
@@ -27,7 +28,6 @@ def _get_stats_root(player: dict) -> dict:
 
 
 def compute_maxima(players: list[dict]) -> MaxMap:
-    # Calcule, pour chaque (section, stat_key), la valeur max et le nombre de gagnants (ties)
     maxima: MaxMap = {}
 
     for p in players:
@@ -56,7 +56,6 @@ def compute_maxima(players: list[dict]) -> MaxMap:
 
 
 def _find_player(players: list[dict], player_name: str) -> dict | None:
-    # Recherche par nom (case-insensitive)
     needle = player_name.strip().lower()
     for p in players:
         name = str(p.get("name") or "").strip().lower()
@@ -65,9 +64,17 @@ def _find_player(players: list[dict], player_name: str) -> dict | None:
     return None
 
 
+def _compute_percent(value: int, total_value: int) -> float:
+    # Calcule un pourcentage sur le total (0 si total=0)
+    if total_value <= 0:
+        return 0.0
+    return round((value / total_value) * 100.0, 6)
+
+
 def build_best_stats(
     players: list[dict],
     maxima: MaxMap,
+    aggregate: AggMap,
     player_name: str,
     min_value: int,
     include_zeros: bool,
@@ -88,7 +95,10 @@ def build_best_stats(
         if not isinstance(section_map, dict):
             continue
 
+        section_str = str(section)
+
         for stat_key, raw_value in section_map.items():
+            stat_key_str = str(stat_key)
             value = _coerce_non_negative_int(raw_value)
 
             if not include_zeros and value == 0:
@@ -96,22 +106,27 @@ def build_best_stats(
             if value < min_value:
                 continue
 
-            max_value, winners_count = maxima.get((str(section), str(stat_key)), (0, 1))
+            max_value, winners_count = maxima.get((section_str, stat_key_str), (0, 1))
+
+            # Total cumulé de tout le monde pour ce couple (section, stat_key)
+            total_value = int((aggregate.get(section_str) or {}).get(stat_key_str, 0) or 0)
+            total_value = max(0, total_value)
+
             if value == max_value and (include_zeros or max_value > 0):
                 results.append(
                     BestStatEntry(
-                        section=str(section),
-                        stat_key=str(stat_key),
+                        section=section_str,
+                        stat_key=stat_key_str,
                         value=value,
                         max_value=max_value,
                         winners_count=winners_count,
                         tied=(winners_count > 1),
+                        total_value=total_value,
+                        percent_of_total=_compute_percent(value, total_value),
                     )
                 )
 
-    # Tri par valeur décroissante puis clé pour stabilité
     results.sort(key=lambda r: (-r.value, r.section, r.stat_key))
-
     limited = results[:max_results]
 
     return BestStatsResponse(

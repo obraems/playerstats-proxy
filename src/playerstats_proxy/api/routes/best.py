@@ -7,6 +7,7 @@ from fastapi import APIRouter, Depends, HTTPException, Query, Request
 
 from playerstats_proxy.core.config import Settings
 from playerstats_proxy.models.schemas import BestStatsResponse
+from playerstats_proxy.services.aggregate_service import compute_aggregate
 from playerstats_proxy.services.best_service import build_best_stats, compute_maxima
 from playerstats_proxy.services.playerstats_client import PlayerStatsClient
 
@@ -32,7 +33,6 @@ async def best_stats_for_player(
     settings: Settings = Depends(get_settings),
     client: PlayerStatsClient = Depends(get_playerstats_client),
 ) -> BestStatsResponse:
-    # Si max_results=0, on applique un plafond de sécurité configurable
     effective_max_results = settings.max_best_results if max_results <= 0 else min(max_results, settings.max_best_results)
 
     # Cache joueurs
@@ -49,6 +49,7 @@ async def best_stats_for_player(
 
         request.app.state.players_cache.set(players)
         request.app.state.maxima_cache.clear()
+        request.app.state.aggregate_cache.clear()
         cached_players = players
 
     # Cache maxima
@@ -57,10 +58,17 @@ async def best_stats_for_player(
         cached_maxima = compute_maxima(cached_players)
         request.app.state.maxima_cache.set(cached_maxima)
 
+    # Cache agrégat
+    cached_aggregate = request.app.state.aggregate_cache.get()
+    if cached_aggregate is None:
+        cached_aggregate = compute_aggregate(cached_players)
+        request.app.state.aggregate_cache.set(cached_aggregate)
+
     try:
         return build_best_stats(
             players=cached_players,
             maxima=cached_maxima,
+            aggregate=cached_aggregate,
             player_name=player_name,
             min_value=min_value,
             include_zeros=include_zeros,
