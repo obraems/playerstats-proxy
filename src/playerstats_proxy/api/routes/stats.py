@@ -1,12 +1,17 @@
 from __future__ import annotations
 
 import logging
+from datetime import datetime, timezone
 
 import httpx
 from fastapi import APIRouter, Depends, HTTPException, Query, Request
 
 from playerstats_proxy.core.config import Settings
-from playerstats_proxy.models.schemas import AggregateStatsResponse
+from playerstats_proxy.models.schemas import (
+    AggregateStatsResponse,
+    StatsSectionKeysResponse,
+    StatsSectionsResponse,
+)
 from playerstats_proxy.services.aggregate_service import build_aggregate_response, compute_aggregate
 from playerstats_proxy.services.playerstats_client import PlayerStatsClient
 
@@ -21,6 +26,84 @@ def get_settings(request: Request) -> Settings:
 def get_playerstats_client(request: Request) -> PlayerStatsClient:
     return request.app.state.playerstats_client
 
+@router.get("/stats/sections", response_model=StatsSectionsResponse)
+async def stats_sections(
+    request: Request,
+    client: PlayerStatsClient = Depends(get_playerstats_client),
+) -> StatsSectionsResponse:
+    # Récupère les joueurs depuis le cache (ou upstream si cache vide)
+    cached_players = request.app.state.players_cache.get()
+    if cached_players is None:
+        try:
+            players = await client.fetch_players()
+        except httpx.HTTPError as e:
+            logger.exception("Upstream HTTP error while fetching players")
+            raise HTTPException(status_code=502, detail=f"Upstream HTTP error: {type(e).__name__}") from e
+        except ValueError as e:
+            logger.exception("Upstream payload error")
+            raise HTTPException(status_code=502, detail=str(e)) from e
+
+        request.app.state.players_cache.set(players)
+        request.app.state.maxima_cache.clear()
+        request.app.state.aggregate_cache.clear()
+        cached_players = players
+
+    # Récupère l'agrégat depuis le cache (ou le calcule)
+    cached_aggregate = request.app.state.aggregate_cache.get()
+    if cached_aggregate is None:
+        cached_aggregate = compute_aggregate(cached_players)
+        request.app.state.aggregate_cache.set(cached_aggregate)
+
+    sections = sorted(cached_aggregate.keys())
+
+    return StatsSectionsResponse(
+        count=len(sections),
+        updated_at=datetime.now(timezone.utc),
+        sections=sections,
+    )
+
+
+@router.get("/stats/{section}/keys", response_model=StatsSectionKeysResponse)
+async def stats_section_keys(
+    section: str,
+    request: Request,
+    client: PlayerStatsClient = Depends(get_playerstats_client),
+) -> StatsSectionKeysResponse:
+    # Récupère les joueurs depuis le cache (ou upstream si cache vide)
+    cached_players = request.app.state.players_cache.get()
+    if cached_players is None:
+        try:
+            players = await client.fetch_players()
+        except httpx.HTTPError as e:
+            logger.exception("Upstream HTTP error while fetching players")
+            raise HTTPException(status_code=502, detail=f"Upstream HTTP error: {type(e).__name__}") from e
+        except ValueError as e:
+            logger.exception("Upstream payload error")
+            raise HTTPException(status_code=502, detail=str(e)) from e
+
+        request.app.state.players_cache.set(players)
+        request.app.state.maxima_cache.clear()
+        request.app.state.aggregate_cache.clear()
+        cached_players = players
+
+    # Récupère l'agrégat depuis le cache (ou le calcule)
+    cached_aggregate = request.app.state.aggregate_cache.get()
+    if cached_aggregate is None:
+        cached_aggregate = compute_aggregate(cached_players)
+        request.app.state.aggregate_cache.set(cached_aggregate)
+
+    section_map = cached_aggregate.get(section)
+    if section_map is None:
+        raise HTTPException(status_code=404, detail="Section not found")
+
+    stat_keys = sorted(section_map.keys())
+
+    return StatsSectionKeysResponse(
+        section=section,
+        count=len(stat_keys),
+        updated_at=datetime.now(timezone.utc),
+        stat_keys=stat_keys,
+    )
 
 @router.get("/stats", response_model=AggregateStatsResponse)
 async def aggregated_stats(

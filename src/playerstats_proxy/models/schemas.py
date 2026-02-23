@@ -77,3 +77,16 @@ class SectionTopResponse(BaseModel):
     updated_at: datetime
     total_value: int = Field(ge=0)
     results: list[SectionTopEntry]
+
+
+class StatsSectionsResponse(BaseModel):
+    count: int = Field(ge=0)
+    updated_at: datetime
+    sections: list[str]
+
+
+class StatsSectionKeysResponse(BaseModel):
+    section: str
+    count: int = Field(ge=0)
+    updated_at: datetime
+    stat_keys: list[str]
