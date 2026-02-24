@@ -9,6 +9,7 @@ from playerstats_proxy.api.routes.health import router as health_router
 from playerstats_proxy.api.routes.top import router as top_router
 from playerstats_proxy.api.routes.best import router as best_router
 from playerstats_proxy.api.routes.stats import router as stats_router
+from playerstats_proxy.api.routes.players import router as players_router
 from playerstats_proxy.api.routes.upstream_proxy import router as upstream_proxy_router
 from playerstats_proxy.core.config import Settings
 from playerstats_proxy.core.logging import setup_logging
@@ -55,6 +56,7 @@ app.include_router(health_router)
 app.include_router(top_router)
 app.include_router(best_router)
 app.include_router(stats_router)
+app.include_router(players_router)
 
 # IMPORTANT : à la fin, pour que tes routes custom aient priorité
 app.include_router(upstream_proxy_router)

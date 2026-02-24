@@ -90,3 +90,14 @@ class StatsSectionKeysResponse(BaseModel):
     count: int = Field(ge=0)
     updated_at: datetime
     stat_keys: list[str]
+
+
+class BasicPlayerEntry(BaseModel):
+    uuid: str
+    name: str
+
+
+class BasicPlayersResponse(BaseModel):
+    count: int = Field(ge=0)
+    updated_at: datetime
+    players: list[BasicPlayerEntry]
