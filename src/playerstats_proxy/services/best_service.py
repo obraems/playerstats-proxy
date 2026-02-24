@@ -55,11 +55,12 @@ def compute_maxima(players: list[dict]) -> MaxMap:
     return maxima
 
 
-def _find_player(players: list[dict], player_name: str) -> dict | None:
-    needle = player_name.strip().lower()
+def _find_player_by_uuid(players: list[dict], player_uuid: str) -> dict | None:
+    # Recherche par UUID (case-insensitive par sécurité)
+    needle = player_uuid.strip().lower()
     for p in players:
-        name = str(p.get("name") or "").strip().lower()
-        if name == needle:
+        uuid = str(p.get("uuid") or "").strip().lower()
+        if uuid == needle:
             return p
     return None
 
@@ -75,14 +76,14 @@ def build_best_stats(
     players: list[dict],
     maxima: MaxMap,
     aggregate: AggMap,
-    player_name: str,
+    player_uuid: str,
     min_value: int,
     include_zeros: bool,
     max_results: int,
 ) -> BestStatsResponse:
-    target = _find_player(players, player_name)
+    target = _find_player_by_uuid(players, player_uuid)
     if target is None:
-        raise KeyError(f"Player not found: {player_name}")
+        raise KeyError(f"Player not found: {player_uuid}")
 
     uuid = str(target.get("uuid") or "")
     name = str(target.get("name") or "")

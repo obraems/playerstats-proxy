@@ -23,9 +23,9 @@ def get_playerstats_client(request: Request) -> PlayerStatsClient:
     return request.app.state.playerstats_client
 
 
-@router.get("/best/{player_name}", response_model=BestStatsResponse)
+@router.get("/best/{uuid}", response_model=BestStatsResponse)
 async def best_stats_for_player(
-    player_name: str,
+    uuid: str,
     request: Request,
     min_value: int = Query(1, ge=0),
     include_zeros: bool = Query(False),
@@ -69,7 +69,7 @@ async def best_stats_for_player(
             players=cached_players,
             maxima=cached_maxima,
             aggregate=cached_aggregate,
-            player_name=player_name,
+            player_uuid=uuid,
             min_value=min_value,
             include_zeros=include_zeros,
             max_results=effective_max_results,
