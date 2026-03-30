@@ -10,11 +10,18 @@ class PlayerStatsClient:
         self._players_path = players_path if players_path.startswith("/") else f"/{players_path}"
 
     async def fetch_players(self) -> list[dict]:
-        # Récupère la liste complète des joueurs (stats incluses) via /moss/players
+        # Récupère la liste complète des joueurs via /moss/players
         url = f"{self._base_url}{self._players_path}"
         resp = await self._client.get(url)
         resp.raise_for_status()
         data = resp.json()
-        if not isinstance(data, list):
-            raise ValueError("Upstream returned unexpected payload (expected list).")
-        return data
+
+        # Vérifie que la réponse est bien un objet contenant la clé "players"
+        if not isinstance(data, dict):
+            raise ValueError("Upstream returned unexpected payload (expected object).")
+
+        players = data.get("players")
+        if not isinstance(players, list):
+            raise ValueError("Upstream returned unexpected payload (expected 'players' list).")
+
+        return players
